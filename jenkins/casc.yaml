@@ -1,0 +1,17 @@
+# Konfiguracja Jenkinsa jako kod (plugin Configuration as Code)
+jenkins:
+  systemMessage: "Jenkins - Lab 5: CI/CD dla aplikacji Task API"
+  numExecutors: 2
+  securityRealm:
+    local:
+      allowsSignup: false
+      users:
+        - id: "admin"
+          name: "Administrator"
+          password: "admin"
+  authorizationStrategy:
+    loggedInUsersCanDoAnything:
+      allowAnonymousRead: false
+unclassified:
+  location:
+    url: "http://localhost:8080/"

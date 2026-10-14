@@ -1,0 +1,51 @@
+# Odpowiednik Jenkinsfile dla GitLab CI/CD (etapy: lint, build, test, deploy)
+stages: [lint, build, test, deploy_test, deploy_prod]
+
+variables:
+  IMAGE: task-api:$CI_COMMIT_REF_SLUG-$CI_PIPELINE_IID
+
+default:
+  image: python:3.12-slim
+
+lint:
+  stage: lint
+  script:
+    - pip install -q -r requirements-dev.txt
+    - flake8 app.py tests --count --statistics
+
+build:
+  stage: build
+  image: docker:27
+  services: [docker:27-dind]
+  script:
+    - docker build -t "$IMAGE" .
+
+unit_tests:
+  stage: test
+  script:
+    - pip install -q -r requirements-dev.txt
+    - pytest -v --junitxml=report.xml
+  artifacts:
+    reports:
+      junit: report.xml
+
+deploy_test:
+  stage: deploy_test
+  image: docker:27
+  services: [docker:27-dind]
+  environment: test
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "develop"
+  script:
+    - APP_IMAGE="$IMAGE" APP_PORT=8081 APP_ENV=test docker compose -p task-api-test up -d --build --wait
+
+deploy_production:
+  stage: deploy_prod
+  image: docker:27
+  services: [docker:27-dind]
+  environment: production
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+      when: manual   # ręczna akceptacja wdrożenia na produkcję
+  script:
+    - APP_IMAGE="$IMAGE" APP_PORT=8082 APP_ENV=production docker compose -p task-api-prod up -d --build --wait
