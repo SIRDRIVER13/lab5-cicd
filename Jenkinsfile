@@ -60,16 +60,20 @@ pipeline {
         stage('Deploy: test') {
             when { anyOf { branch 'main'; branch 'develop' } }
             steps {
+                // Blokada środowiska testowego: develop i main wdrażają na ten sam port 8081,
+                // więc równoległe buildy obu gałęzi czekają tu na siebie (flock).
                 sh '''
+                    exec 9>/tmp/task-api-test.lock
+                    echo "Oczekiwanie na wyłączny dostęp do środowiska testowego..."
+                    flock 9
+                    echo "Blokada uzyskana - wdrażam $VERSION"
                     APP_IMAGE="$IMAGE" APP_PORT=8081 APP_ENV=test APP_VERSION="$VERSION" \
                       docker compose -p task-api-test up -d --no-build --wait
                     docker compose -p task-api-test ps
-                '''
-                sh '''
                     . .venv/bin/activate
                     BASE_URL="$TEST_URL" pytest -v -o addopts="" tests/integration --junitxml=reports/integration.xml
+                    curl -s "$TEST_URL/"
                 '''
-                sh 'curl -s "$TEST_URL/"'
             }
             post {
                 always { junit allowEmptyResults: true, testResults: 'reports/integration.xml' }
