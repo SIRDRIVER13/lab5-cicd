@@ -70,6 +70,13 @@ def create_app(database_url=None):
             row = conn.execute(select(tasks).where(tasks.c.id == task_id)).mappings().one()
         return jsonify(dict(row))
 
+    @app.get("/stats")
+    def stats():
+        with engine.connect() as conn:
+            rows = conn.execute(select(tasks.c.done)).all()
+        done = sum(1 for r in rows if r.done)
+        return jsonify(total=len(rows), done=done, open=len(rows) - done)
+
     return app
 
 

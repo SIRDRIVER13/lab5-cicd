@@ -46,3 +46,10 @@ def test_mark_task_done(client):
 
 def test_mark_missing_task_returns_404(client):
     assert client.patch("/tasks/999", json={"done": True}).status_code == 404
+
+
+def test_stats_counts_tasks(client):
+    client.post("/tasks", json={"title": "A"})
+    task_id = client.post("/tasks", json={"title": "B"}).get_json()["id"]
+    client.patch(f"/tasks/{task_id}", json={"done": True})
+    assert client.get("/stats").get_json() == {"total": 2, "done": 1, "open": 1}
